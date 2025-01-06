@@ -5,6 +5,8 @@ import sys
 
 from dotenv import load_dotenv
 
+from services.activity_fetcher_service import ActivityFetcherService
+
 # Load environment variables from .env file
 load_dotenv()
 
@@ -12,6 +14,7 @@ CLIENT_ID = os.getenv('CLIENT_ID')
 CLIENT_SECRET = os.getenv('CLIENT_SECRET')
 REFRESH_TOKEN = os.getenv('REFRESH_TOKEN')
 TOKEN_URL = os.getenv('TOKEN_URL')
+ACTIVITIES_URL = os.getenv('ACTIVITIES_URL')
 
 DB_SERVER = os.getenv('DB_SERVER')
 DB_NAME = os.getenv('DB_NAME')
@@ -25,6 +28,7 @@ def get_access_token():
     global CLIENT_SECRET
     global REFRESH_TOKEN
     global TOKEN_URL
+    global ACTIVITIES_URL
 
     global DB_SERVER
     global DB_NAME
@@ -54,6 +58,7 @@ def get_access_token():
             file.write(f'CLIENT_SECRET={CLIENT_SECRET}\n')
             file.write(f'REFRESH_TOKEN={new_refresh_token}\n')
             file.write(f'TOKEN_URL={TOKEN_URL}\n')
+            file.write(f'ACTIVITIES_URL={ACTIVITIES_URL}\n')
             file.write(f'DB_SERVER={DB_SERVER}\n')
             file.write(f'DB_NAME={DB_NAME}\n')
             file.write(f'DB_PORT={DB_PORT}\n')
@@ -68,7 +73,8 @@ def main():
     if access_token is None:
         return
     
-    print(f'successfully got an access token {access_token}')
+    act_fetcher = ActivityFetcherService(access_token, ACTIVITIES_URL)
+    act_fetcher.get_activities()
     
 if __name__ == "__main__":
     main()
