@@ -74,7 +74,8 @@ def main():
         return
     
     act_fetcher = ActivityFetcherService(access_token, ACTIVITIES_URL)
-    act_fetcher.get_activities()
+    activities = act_fetcher.get_activities()
+    act_fetcher.upsert_activities(activities)
     
 if __name__ == "__main__":
     main()
