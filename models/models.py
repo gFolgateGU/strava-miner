@@ -16,7 +16,6 @@ class User(Base):
     activities = relationship("Activity", back_populates="user")
 
 class Activity(Base):
-    print('hello')
     __tablename__ = 'activities'
     activity_id = Column(BigInteger, primary_key=True)
     strava_id = Column(BigInteger, ForeignKey('users.strava_id'))

@@ -1,21 +1,24 @@
 import requests
 import json
 from datetime import datetime
+from sqlalchemy.dialects.postgresql import insert
 
 from models.models import Activity
 
+
 class ActivityFetcherService:
-    def __init__(self, access_token, activites_url):
+    def __init__(self, access_token, activites_url, db_session):
         self.access_token = access_token
         self.activites_url = activites_url
+        self.db_session = db_session
         self.headers = {
             'Authorization': f'Bearer {self.access_token}'
         }
 
 
     def get_activities(self):
-        start_date = datetime(2024, 12, 1, 0, 0, 0).timestamp()
-        end_date = datetime(2025, 1, 1, 0, 0, 0).timestamp()
+        start_date = datetime(2024, 9, 1, 0, 0, 0).timestamp()
+        end_date = datetime(2024, 10, 1, 0, 0, 0).timestamp()
 
         params = {
             'after': int(start_date),
@@ -52,5 +55,62 @@ class ActivityFetcherService:
             print(e)
             return None
 
+    def upsert_activity(self, activity):
+        session = None
+        try:
+            # Start a new session
+            session = self.db_session()
+
+            stmt = insert(Activity).values(
+                activity_id=activity.activity_id,
+                strava_id=activity.strava_id,
+                name=activity.name,
+                distance=activity.distance,
+                moving_time=activity.moving_time,
+                elapsed_time=activity.elapsed_time,
+                total_elevation_gain=activity.total_elevation_gain,
+                type=activity.type,
+                start_date=activity.start_date,
+                start_date_local=activity.start_date_local,
+                average_speed=activity.average_speed,
+                max_speed=activity.max_speed,
+                average_cadence=activity.average_cadence,
+                average_heartrate=activity.average_heartrate,
+                max_heartrate=activity.max_heartrate
+            )
+            stmt = stmt.on_conflict_do_update(
+                index_elements=['activity_id'],
+                set_={ 
+                    'strava_id': stmt.excluded.strava_id,
+                    'name': stmt.excluded.name,
+                    'distance': stmt.excluded.distance,
+                    'moving_time': stmt.excluded.moving_time,
+                    'elapsed_time': stmt.excluded.elapsed_time,
+                    'total_elevation_gain': stmt.excluded.total_elevation_gain,
+                    'type': stmt.excluded.type,
+                    'start_date': stmt.excluded.start_date,
+                    'start_date_local': stmt.excluded.start_date_local,
+                    'average_speed': stmt.excluded.average_speed,
+                    'max_speed': stmt.excluded.max_speed,
+                    'average_cadence': stmt.excluded.average_cadence,
+                    'average_heartrate': stmt.excluded.average_heartrate,
+                    'max_heartrate': stmt.excluded.max_heartrate
+                }
+            )
+            # Execute the statement
+            session.execute(stmt)     
+            # Commit the transaction
+            session.commit()
+        except Exception as error:
+            # Roll back the transaction in case of an error
+            if session:
+                session.rollback()
+            print(f"Error: {error}")
+        finally:
+            # Close the session
+            if session:
+                session.close()        
+    
     def upsert_activities(self, activities):
-        print(f'I got {len(activities)} activities to upsert')
+        for activity in activities:
+            self.upsert_activity(activity)

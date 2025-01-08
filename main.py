@@ -2,7 +2,10 @@ import requests
 import json
 import os
 import sys
+import psycopg2
 
+from sqlalchemy import create_engine, text
+from sqlalchemy.orm import sessionmaker
 from dotenv import load_dotenv
 
 from services.activity_fetcher_service import ActivityFetcherService
@@ -21,6 +24,24 @@ DB_NAME = os.getenv('DB_NAME')
 DB_PORT = os.getenv('DB_PORT')
 DB_USERNAME = os.getenv('DB_USERNAME')
 DB_PASSWORD = os.getenv('DB_PASSWORD')
+
+def get_db_session():
+    global DB_SERVER
+    global DB_NAME
+    global DB_PORT
+    global DB_USERNAME
+    global DB_PASSWORD
+    
+    db_user = DB_USERNAME
+    db_password = DB_PASSWORD
+    db_host = DB_SERVER
+    db_name = DB_NAME
+    db_port = DB_PORT
+    database_url = f"postgresql+psycopg2://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
+    engine = create_engine(database_url)
+    db = sessionmaker(bind=engine)
+
+    return db
 
 def get_access_token():
     # Declare globals
@@ -42,7 +63,6 @@ def get_access_token():
         'grant_type': 'refresh_token',
         'refresh_token': REFRESH_TOKEN
     }
-    print(TOKEN_URL)
     response = requests.post(TOKEN_URL, data=data)
     response_data = response.json()
 
@@ -72,8 +92,12 @@ def main():
     access_token = get_access_token()
     if access_token is None:
         return
+
+    db_session = get_db_session()
+    if db_session is None:
+        return
     
-    act_fetcher = ActivityFetcherService(access_token, ACTIVITIES_URL)
+    act_fetcher = ActivityFetcherService(access_token, ACTIVITIES_URL, db_session)
     activities = act_fetcher.get_activities()
     act_fetcher.upsert_activities(activities)
     
